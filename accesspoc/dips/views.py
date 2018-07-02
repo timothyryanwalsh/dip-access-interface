@@ -14,9 +14,38 @@ import tempfile
 import zipfile
 
 
+def get_sort_params(request, options, default):
+    """
+    Get sort option and direction from request. Check options dict. for
+    available choices and use default if no option is passed on the request
+    or if the option is not valid. Defaults to asc. sort direction.
+    """
+    option = default
+    if 'sort' in request.GET and request.GET['sort'] in list(options.keys()):
+        option = request.GET['sort']
+
+    dir = 'asc'
+    if 'sort_dir' in request.GET and request.GET['sort_dir'] in ['asc', 'desc']:
+        dir = request.GET['sort_dir']
+
+    return (option, dir)
+
+
 @login_required(login_url='/login/')
 def home(request):
-    collections = Collection.es_doc.search().sort('dc.identifier.raw')
+    # Sort options
+    sort_options = {
+        'identifier': 'dc.identifier.raw',
+        'title': 'dc.title.raw',
+    }
+    sort_option, sort_dir = get_sort_params(request, sort_options, 'identifier')
+    sort_field = sort_options.get(sort_option)
+
+    # Search
+    search = Collection.es_doc.search()
+    search = search.sort({sort_field: {'order': sort_dir}})
+    collections = search.execute()
+
     return render(request, 'home.html', {'collections': collections})
 
 
@@ -120,27 +149,67 @@ def edit_user(request, pk):
 
 @login_required(login_url='/login/')
 def search(request):
-    digital_files = DigitalFile.es_doc.search().sort('filepath.raw')
+    # Sort options
+    sort_options = {
+        'path': 'filepath.raw',
+        'format': 'fileformat.raw',
+        'size': 'size_bytes',
+    }
+    sort_option, sort_dir = get_sort_params(request, sort_options, 'path')
+    sort_field = sort_options.get(sort_option)
+
+    # Search
+    search = DigitalFile.es_doc.search()
+    search = search.sort({sort_field: {'order': sort_dir}})
+    digital_files = search.execute()
+
     return render(request, 'search.html', {'digital_files': digital_files})
 
 
 @login_required(login_url='/login/')
 def collection(request, pk):
     collection = get_object_or_404(Collection, pk=pk)
-    dips = DIP.es_doc.search().query(
+
+    # Sort options
+    sort_options = {
+        'identifier': 'dc.identifier.raw',
+        'title': 'dc.title.raw',
+    }
+    sort_option, sort_dir = get_sort_params(request, sort_options, 'identifier')
+    sort_field = sort_options.get(sort_option)
+
+    # Search
+    search = DIP.es_doc.search().query(
         'match',
         **{'collection.id': pk},
-    ).sort('dc.identifier.raw')
+    )
+    search = search.sort({sort_field: {'order': sort_dir}})
+    dips = search.execute()
+
     return render(request, 'collection.html', {'collection': collection, 'dips': dips})
 
 
 @login_required(login_url='/login/')
 def dip(request, pk):
     dip = get_object_or_404(DIP, pk=pk)
-    digital_files = DigitalFile.es_doc.search().query(
+
+    # Sort options
+    sort_options = {
+        'path': 'filepath.raw',
+        'format': 'fileformat.raw',
+        'size': 'size_bytes',
+    }
+    sort_option, sort_dir = get_sort_params(request, sort_options, 'path')
+    sort_field = sort_options.get(sort_option)
+
+    # Search
+    search = DigitalFile.es_doc.search().query(
         'match',
         **{'dip.id': pk},
-    ).sort('filepath.raw')
+    )
+    search = search.sort({sort_field: {'order': sort_dir}})
+    digital_files = search.execute()
+
     return render(request, 'dip.html', {'dip': dip, 'digital_files': digital_files})
 
 

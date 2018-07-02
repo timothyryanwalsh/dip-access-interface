@@ -4,7 +4,7 @@ from elasticsearch_dsl import DocType, InnerDoc, Keyword, Long, \
 
 class DublinCoreDoc(InnerDoc):
     identifier = Text(fields={'raw': Keyword()})
-    title = Text()
+    title = Text(fields={'raw': Keyword()})
     date = Text()
     description = Text()
 
@@ -32,7 +32,7 @@ class DIPDoc(DocType):
 class DigitalFileDoc(DocType):
     uuid = Text()
     filepath = Text(fields={'raw': Keyword()})
-    fileformat = Text()
+    fileformat = Text(fields={'raw': Keyword()})
     size_bytes = Long()
     datemodified = Text()
     dip = Object(properties={
